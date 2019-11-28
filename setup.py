@@ -27,4 +27,5 @@ setuptools.setup(
     entry_points={'console_scripts': ['run-app = cloudflare_exporter.exporter:main', ], },
     data_files=[('.', ['requirements.txt', 'tests-requirements.txt'])],
     packages=setuptools.find_packages(),
+    python_requires='>=3.6',
 )
