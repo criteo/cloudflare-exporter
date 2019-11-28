@@ -1,9 +1,10 @@
 import argparse
+import logging
 
 from aiohttp import web
 from prometheus_client.core import REGISTRY
 
-from cloudflare_exporter.config import DEFAULT_HOST, DEFAULT_PORT
+from cloudflare_exporter.config import LOG_FORMAT, DEFAULT_HOST, DEFAULT_PORT
 from cloudflare_exporter.handlers import (handle_metrics,
                                           handle_health)
 from cloudflare_exporter.collector import CloudflareCollector
@@ -23,6 +24,8 @@ def parse_args():
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+
     args = parse_args()
     REGISTRY.register(CloudflareCollector(cloudflare_token=args.token))
     app = web.Application()
