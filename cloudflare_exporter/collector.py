@@ -88,5 +88,12 @@ def _get_cloudflare_analytics(token):
     cloudflare = CloudFlare.CloudFlare(debug=False, token=token)
     for zone in cloudflare.zones.get():
         # get the last 30 minutes (the very last 5 minutes are usually not correct)
-        series = cloudflare.zones.analytics.colos(zone['id'], params={'since': -35, 'until': -5})
+        try:
+            series = cloudflare.zones.analytics.colos(zone['id'], params={'since': -35, 'until': -5})
+        except CloudFlare.exceptions.CloudFlareAPIError as e:
+            code, _ = e.args
+            if code == 10_000:
+                # Authentication error on this zone. We continue for others zones
+                continue
+            raise e
         yield zone['name'], series
