@@ -4,10 +4,9 @@ import logging
 from aiohttp import web
 from prometheus_client.core import REGISTRY
 
-from cloudflare_exporter.config import LOG_FORMAT, DEFAULT_HOST, DEFAULT_PORT
-from cloudflare_exporter.handlers import (handle_metrics,
-                                          handle_health)
 from cloudflare_exporter.collector import CloudflareCollector
+from cloudflare_exporter.config import DEFAULT_HOST, DEFAULT_PORT, LOG_FORMAT
+from cloudflare_exporter.handlers import handle_health, handle_metrics
 
 
 def parse_args():

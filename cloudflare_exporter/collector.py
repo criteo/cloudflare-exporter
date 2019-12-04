@@ -1,6 +1,5 @@
-from prometheus_client.core import GaugeMetricFamily
-
 import CloudFlare
+from prometheus_client.core import GaugeMetricFamily
 
 
 class CloudflareCollector:
