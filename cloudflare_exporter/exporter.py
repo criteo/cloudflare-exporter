@@ -31,7 +31,9 @@ def main():
     app = web.Application()
     app.router.add_get('/metrics', handle_metrics)
     app.router.add_get('/health', handle_health)
-    web.run_app(app, host=args.host, port=args.port, access_log=None)
+    print(f'======== Running on http://{args.host}:{args.port}/metrics ========')
+    web.run_app(app, host=args.host, port=args.port, access_log=None,
+                print=False)
 
 
 if __name__ == '__main__':
