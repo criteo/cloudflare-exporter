@@ -8,5 +8,6 @@ install:
   - pip install -r tests-requirements.txt
 # command to run tests
 script:
-  - pytest
+# TODO Create python tests
+# - pytest
   - pylama
