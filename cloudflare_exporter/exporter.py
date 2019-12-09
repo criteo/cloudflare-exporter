@@ -1,5 +1,6 @@
 import argparse
 import logging
+import sys
 
 from aiohttp import web
 from prometheus_client.core import REGISTRY
@@ -9,23 +10,29 @@ from cloudflare_exporter.config import DEFAULT_HOST, DEFAULT_PORT, LOG_FORMAT
 from cloudflare_exporter.handlers import handle_health, handle_metrics
 
 
-def parse_args():
+def parse_args(args):
+    def int_positive(string):
+        ivalue = int(string)
+        if ivalue <= 0:
+            raise argparse.ArgumentTypeError(f'{string} is not positive')
+        return ivalue
+
     parser = argparse.ArgumentParser(description='Cloudfalre prometheus exporter')
     parser.add_argument('-t', '--token', type=str, required=True,
                         help='Cloudflare API Token')
     parser.add_argument('--host', type=str,
                         help='TCP/IP host for HTTP server',
                         default=DEFAULT_HOST)
-    parser.add_argument('--port', type=int,
+    parser.add_argument('--port', type=int_positive,
                         help="Port used to expose metrics for Prometheus",
                         default=DEFAULT_PORT)
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
 def main():
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
-    args = parse_args()
+    args = parse_args(sys.argv[1:])
     REGISTRY.register(CloudflareCollector(cloudflare_token=args.token))
     app = web.Application()
     app.router.add_get('/metrics', handle_metrics)
