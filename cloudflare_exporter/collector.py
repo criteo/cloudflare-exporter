@@ -5,16 +5,24 @@ from statistics import mean
 import CloudFlare
 from prometheus_client.core import GaugeMetricFamily
 
-from cloudflare_exporter.config import (LOGS_EXTENDED_METRIC,
-                                        LOGS_EXTENDED_METRIC_COUNT,
-                                        LOGS_EXTENDED_METRIC_SAMPLE,
-                                        LOGS_EXTENDED_METRIC_RANGE)
 from cloudflare_exporter.lib.statistics import quantiles
 
 
 class CloudflareCollector:
-    def __init__(self, cloudflare_token):
+    """Collector of cloudflare metrics
+    :param cloudflare_token: cloudflare API token
+    :param logs_fetch: Get some extended metrics from logs
+    :param logs_count: Number of logs (  https://developers.cloudflare.com/logs/logpull-api/requesting-logs/ )
+    :param logs_sample: sample ( see sample https://developers.cloudflare.com/logs/logpull-api/requesting-logs/ )
+    :param logs_range: range is second for logs history
+    """
+    # pylint: disable-msg=too-many-arguments
+    def __init__(self, cloudflare_token, logs_fetch, logs_count, logs_sample, logs_range):
         self.cloudflare_token = cloudflare_token
+        self.logs_fetch = logs_fetch
+        self.logs_count = logs_count
+        self.logs_sample = logs_sample
+        self.logs_range = logs_range
 
     def logs_collect(self, families):
         families['received_requests_pop_origin'] = GaugeMetricFamily(
@@ -28,7 +36,10 @@ class CloudflareCollector:
                 f'Response Time:{tile}',
                 labels=['zone', 'colo_id', 'origin_ip', 'client_country'])
 
-        for metric in _get_cloudflare_metrics_from_logs(self.cloudflare_token):
+        for metric in _get_cloudflare_metrics_from_logs(self.cloudflare_token,
+                                                        self.logs_count,
+                                                        self.logs_sample,
+                                                        self.logs_range):
             for keys, value in metric.received_requests_pop_origin.items():
                 families['received_requests_pop_origin'].add_metric(keys, value)
             for keys, values in metric.origin_response_times.items():
@@ -75,7 +86,7 @@ class CloudflareCollector:
                 labels=['zone', 'colo_id', 'threat_country'],
             ),
         }
-        if LOGS_EXTENDED_METRIC:
+        if self.logs_fetch:
             self.logs_collect(families)
 
         for zone, raw_data in _get_cloudflare_analytics(self.cloudflare_token):
@@ -158,12 +169,12 @@ class LogMetrics:
             self.origin_response_times[key].append(nanos2s(serie['OriginResponseTime']))
 
 
-def _get_cloudflare_metrics_from_logs(token):
+def _get_cloudflare_metrics_from_logs(token, logs_count, logs_sample, logs_range):
     cloudflare = CloudFlare.CloudFlare(debug=False, token=token)
     # from cf docs: Must be at least 1 minute earlier than now and later than start
     # Sometime 1 minutes is not enough...
     end = int(time.time() - 60 * 1)
-    start = end - 60 * LOGS_EXTENDED_METRIC_RANGE
+    start = end - logs_range
     for zone in cloudflare.zones.get():
         series = cloudflare.zones.logs.received(zone['id'],
                                                 params={'end': end,
@@ -172,8 +183,8 @@ def _get_cloudflare_metrics_from_logs(token):
                                                                   'EdgeColoCode,ConnectTimestamp,'
                                                                   'OriginIP,'
                                                                   'OriginResponseTime',
-                                                        'count': LOGS_EXTENDED_METRIC_COUNT,
-                                                        'sample': LOGS_EXTENDED_METRIC_SAMPLE
+                                                        'count': logs_count,
+                                                        'sample': logs_sample
                                                         })
         if not isinstance(series, list):
             # cloudflare.zones.logs.received don't raise any error on authentification failure

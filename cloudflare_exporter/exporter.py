@@ -6,7 +6,12 @@ from aiohttp import web
 from prometheus_client.core import REGISTRY
 
 from cloudflare_exporter.collector import CloudflareCollector
-from cloudflare_exporter.config import DEFAULT_HOST, DEFAULT_PORT, LOG_FORMAT
+from cloudflare_exporter.config import (DEFAULT_HOST,
+                                        DEFAULT_LOGS_FETCH,
+                                        DEFAULT_LOGS_COUNT,
+                                        DEFAULT_LOGS_RANGE,
+                                        DEFAULT_LOGS_SAMPLE,
+                                        DEFAULT_PORT, LOG_FORMAT)
 from cloudflare_exporter.handlers import handle_health, handle_metrics
 
 
@@ -26,6 +31,18 @@ def parse_args(args):
     parser.add_argument('--port', type=int_positive,
                         help="Port used to expose metrics for Prometheus",
                         default=DEFAULT_PORT)
+    parser.add_argument('--logs_fetch', type=bool,
+                        help="Activate metric from logs",
+                        default=DEFAULT_LOGS_FETCH)
+    parser.add_argument('--logs_count', type=int_positive,
+                        help="Cloudflare logs: count param",
+                        default=DEFAULT_LOGS_COUNT)
+    parser.add_argument('--logs_sample', type=int_positive,
+                        help="Cloudflare logs: sample param [0-1]",
+                        default=DEFAULT_LOGS_SAMPLE)
+    parser.add_argument('--logs_range', type=int_positive,
+                        help="Cloudflare logs: range in seconds",
+                        default=DEFAULT_LOGS_RANGE)
     return parser.parse_args(args)
 
 
@@ -33,7 +50,11 @@ def main():
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
     args = parse_args(sys.argv[1:])
-    REGISTRY.register(CloudflareCollector(cloudflare_token=args.token))
+    REGISTRY.register(CloudflareCollector(cloudflare_token=args.token,
+                                          logs_fetch=args.logs_fetch,
+                                          logs_count=args.logs_count,
+                                          logs_sample=args.logs_sample,
+                                          logs_range=args.logs_range))
     app = web.Application()
     app.router.add_get('/metrics', handle_metrics)
     app.router.add_get('/health', handle_health)

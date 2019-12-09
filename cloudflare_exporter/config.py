@@ -4,10 +4,9 @@ DEFAULT_PORT = 8080
 
 # To have extended stats, by origin IP, based on the logs.
 # https://developers.cloudflare.com/logs/logpull-api/requesting-logs/
-LOGS_EXTENDED_METRIC = True
-LOGS_EXTENDED_METRIC_COUNT = 10000
-LOGS_EXTENDED_METRIC_SAMPLE = 0.01
-
+DEFAULT_LOGS_FETCH = True
+DEFAULT_LOGS_COUNT = 10000
+DEFAULT_LOGS_SAMPLE = 0.1
 # Time range in seconds for the logs
-# Adjust with you scrape_interval
-LOGS_EXTENDED_METRIC_RANGE = 1
+# Adjust with your scrape_interval
+DEFAULT_LOGS_RANGE = 60
