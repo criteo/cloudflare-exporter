@@ -17,31 +17,30 @@ class CloudflareCollector:
         self.cloudflare_token = cloudflare_token
 
     def logs_collect(self, families):
-        if LOGS_EXTENDED_METRIC:
-            families['received_requests_pop_origin'] = GaugeMetricFamily(
-                'cloudflare_by_origin_received_requests',
-                'Requests received at this PoP location.',
+        families['received_requests_pop_origin'] = GaugeMetricFamily(
+            'cloudflare_by_origin_received_requests',
+            'Requests received at this PoP location.',
+            labels=['zone', 'colo_id', 'origin_ip', 'client_country'])
+
+        for tile in ['avg', '50tile', '90tile']:
+            families[f'origin_response_time_{tile}'] = GaugeMetricFamily(
+                f'cloudflare_origin_response_time_{tile}',
+                f'Response Time:{tile}',
                 labels=['zone', 'colo_id', 'origin_ip', 'client_country'])
 
-            for tile in ['avg', '50tile', '90tile']:
-                families[f'origin_response_time_{tile}'] = GaugeMetricFamily(
-                    f'cloudflare_origin_response_time_{tile}',
-                    f'Response Time:{tile}',
-                    labels=['zone', 'colo_id', 'origin_ip', 'client_country'])
+        for metric in _get_cloudflare_metrics_from_logs(self.cloudflare_token):
+            for keys, value in metric.received_requests_pop_origin.items():
+                families['received_requests_pop_origin'].add_metric(keys, value)
+            for keys, values in metric.origin_response_times.items():
+                families['origin_response_time_avg'].add_metric(keys, mean(values))
 
-            for metric in _get_cloudflare_metrics_from_logs(self.cloudflare_token):
-                for keys, value in metric.received_requests_pop_origin.items():
-                    families['received_requests_pop_origin'].add_metric(keys, value)
-                for keys, values in metric.origin_response_times.items():
-                    families['origin_response_time_avg'].add_metric(keys, mean(values))
-
-                    try:
-                        decile = quantiles(values, n=10)
-                    except ValueError:
-                        # Not enough Data.
-                        continue
-                    families['origin_response_time_50tile'].add_metric(keys, decile[5 - 1])
-                    families['origin_response_time_90tile'].add_metric(keys, decile[9 - 1])
+                try:
+                    decile = quantiles(values, n=10)
+                except ValueError:
+                    # Not enough Data.
+                    continue
+                families['origin_response_time_50tile'].add_metric(keys, decile[5 - 1])
+                families['origin_response_time_90tile'].add_metric(keys, decile[9 - 1])
 
     def collect(self):
         families = {
