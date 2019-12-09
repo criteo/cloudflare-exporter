@@ -25,6 +25,12 @@ class CloudflareCollector:
         self.logs_range = logs_range
 
     def logs_collect(self, families):
+        """Collect logs, and calcul some metric we cannot find on the analytics
+
+        received_requests_pop_origin: Number of requests ( by colo_id/origin_ip/client_country )
+        cloudflare_origin_response_time_avg : avg latency time from Cf to server ( by colo_id/origin_ip/client_country )
+        cloudflare_origin_response_time_xxtile : percentile of latency time from Cf to server
+        """
         families['received_requests_pop_origin'] = GaugeMetricFamily(
             'cloudflare_by_origin_received_requests',
             'Requests received at this PoP location.',
