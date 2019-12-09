@@ -17,7 +17,7 @@ _INSTALL_REQUIRES = [l for l in _REQUIREMENTS_TXT if "://" not in l]
 
 setuptools.setup(
     name='cloudflare-exporter',
-    version='0.3',
+    version='0.4',
     author='Criteo',
     url='https://github.com/criteo/cloudflare-exporter',
     author_email='github@criteo.com',
