@@ -10,3 +10,5 @@ DEFAULT_LOGS_SAMPLE = 0.1
 # Time range in seconds for the logs
 # Adjust with your scrape_interval
 DEFAULT_LOGS_RANGE = 60
+DEFAULT_GET_ORIGIN_IP_PTR = True
+DNS_PTR_CACHE = 1024

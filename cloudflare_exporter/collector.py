@@ -1,10 +1,13 @@
+import socket
 import time
 from collections import Counter, defaultdict
+from functools import lru_cache
 from statistics import mean
 
-import CloudFlare
 from prometheus_client.core import GaugeMetricFamily
 
+import CloudFlare
+from cloudflare_exporter.config import DEFAULT_GET_ORIGIN_IP_PTR, DNS_PTR_CACHE
 from cloudflare_exporter.lib.statistics import quantiles
 
 
@@ -16,6 +19,7 @@ class CloudflareCollector:
     :param logs_sample: sample ( see sample https://developers.cloudflare.com/logs/logpull-api/requesting-logs/ )
     :param logs_range: range is second for logs history
     """
+
     # pylint: disable-msg=too-many-arguments
     def __init__(self, cloudflare_token, logs_fetch, logs_count, logs_sample, logs_range):
         self.cloudflare_token = cloudflare_token
@@ -34,13 +38,13 @@ class CloudflareCollector:
         families['received_requests_pop_origin'] = GaugeMetricFamily(
             'cloudflare_by_origin_received_requests',
             'Requests received at this PoP location.',
-            labels=['zone', 'colo_id', 'origin_ip', 'client_country'])
+            labels=['zone', 'colo_id', 'origin', 'client_country'])
 
         for tile in ['avg', '50tile', '90tile']:
             families[f'origin_response_time_{tile}'] = GaugeMetricFamily(
                 f'cloudflare_origin_response_time_{tile}',
                 f'Response Time:{tile}',
-                labels=['zone', 'colo_id', 'origin_ip', 'client_country'])
+                labels=['zone', 'colo_id', 'origin', 'client_country'])
 
         for metric in _get_cloudflare_metrics_from_logs(self.cloudflare_token,
                                                         self.logs_count,
@@ -167,10 +171,30 @@ class LogMetrics:
         self.received_requests_pop_origin = Counter()
         self.origin_response_times = defaultdict(list)
 
+    @staticmethod
+    @lru_cache(maxsize=DNS_PTR_CACHE)
+    def _ptr_get(ip_addr):
+        """ Return the reverse (hostname) of a IP
+
+        Return the IP if there is no reverse.
+        The lru_cache is cleared at each run
+        """
+        if not ip_addr:
+            return ip_addr
+        try:
+            hostame = socket.gethostbyaddr(ip_addr)
+        except socket.herror:
+            return ip_addr
+        return hostame[0]
+
     def add(self, zone, serie):
         # Log by originIP are useless in Cache Mode
         if not serie['CacheTieredFill']:
-            key = (zone, serie['EdgeColoCode'], serie['OriginIP'], serie['ClientCountry'])
+            if DEFAULT_GET_ORIGIN_IP_PTR:
+                hostname = self._ptr_get(serie['OriginIP'])
+            else:
+                hostname = serie['OriginIP']
+            key = (zone, serie['EdgeColoCode'], hostname, serie['ClientCountry'])
             self.received_requests_pop_origin[key] += 1
             self.origin_response_times[key].append(nanos2s(serie['OriginResponseTime']))
 
