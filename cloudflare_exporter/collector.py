@@ -98,13 +98,10 @@ class CloudflareCollector:
         }
         if self.logs_fetch:
             self.logs_collect(families)
-
         for zone, raw_data in _get_cloudflare_analytics(self.cloudflare_token):
-            # We're interested in the latest metrics, however
-            # the Cloudflare API doesn't guarantee non-zero values.
-            # Index -2 was chosen empirically and is usually non-zero.
             for pop_data in raw_data:
-                serie = pop_data['timeseries'][-2]
+                # the most recent timeseries is the last one. ( in case of the IP give more than 1 serie )
+                serie = pop_data['timeseries'][-1]
 
                 families['received_requests'].add_metric(
                     [zone, 'cached', pop_data['colo_id']], serie['requests']['cached']
@@ -146,9 +143,13 @@ class CloudflareCollector:
 def _get_cloudflare_analytics(token):
     cloudflare = CloudFlare.CloudFlare(debug=False, token=token)
     for zone in cloudflare.zones.get():
-        # get the last 30 minutes (the very last 5 minutes are usually not correct)
         try:
-            series = cloudflare.zones.analytics.colos(zone['id'], params={'since': -35, 'until': -5})
+            # from https://api.cloudflare.com/#zone-analytics-dashboard
+            #   By default, range for the Last 60 minutes (from -59 to -1): 1 minute resolution
+            #   by default, the API will move the requested time window backward,
+            #                until it finds a region with completely aggregated data.
+            # to get the most recent "1 minute" range completely aggregated data , we just need to set since to -1
+            series = cloudflare.zones.analytics.colos(zone['id'], params={'since': -1})
         except CloudFlare.exceptions.CloudFlareAPIError as exception:
             if int(exception) == 10_000:
                 # Authentication error on this zone. We continue for others zones
