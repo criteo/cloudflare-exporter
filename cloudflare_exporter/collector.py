@@ -1,6 +1,6 @@
 import socket
-import time
 from collections import Counter, defaultdict
+from datetime import datetime, timedelta
 from functools import lru_cache
 from statistics import mean
 
@@ -203,8 +203,10 @@ class LogMetrics:
 def _get_cloudflare_metrics_from_logs(token, logs_count, logs_sample, logs_range):
     cloudflare = CloudFlare.CloudFlare(debug=False, token=token)
     # from cf docs: Must be at least 1 minute earlier than now and later than start
-    # Sometime 1 minutes is not enough...
-    end = int(time.time() - 60 * 1)
+    # https://developers.cloudflare.com/logs/logpull-api/requesting-logs/
+    # Sometime 1 minutes seems not enough
+    past_1minute = datetime.now() - timedelta(minutes=2)
+    end = int(past_1minute.timestamp())
     start = end - logs_range
     for zone in cloudflare.zones.get():
         series = cloudflare.zones.logs.received(zone['id'],
