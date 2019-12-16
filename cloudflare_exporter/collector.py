@@ -226,4 +226,4 @@ def _get_cloudflare_metrics_from_logs(token, logs_count, logs_sample, logs_range
         metrics = LogMetrics()
         for serie in series:
             metrics.add(zone['name'], serie)
-    yield metrics
+        yield metrics
