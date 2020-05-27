@@ -1,3 +1,4 @@
+import logging
 import socket
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
@@ -222,8 +223,10 @@ def _get_cloudflare_metrics_from_logs(token, logs_count, logs_sample, logs_range
         if not isinstance(series, list):
             # cloudflare.zones.logs.received don't raise any error on authentification failure
             # but answer {'success': False, 'errors': [{'code': 10000, 'message': 'Authentication error'}]}
-            if not series.get('errors') or series.get('errors')[0].get('code') != 10_000:
-                raise Exception(f'/zones.logs.received {series} - api call failed')
+            if series.get('errors'):
+                error_message = f'Error getting log for zone={zone}, error = {series.get("errors")}'
+                logging.error(error_message)
+            # Continue to others zones
             continue
 
         metrics = LogMetrics()
