@@ -152,10 +152,10 @@ def _get_cloudflare_analytics(token):
             # to get the most recent "1 minute" range completely aggregated data , we just need to set since to -1
             series = cloudflare.zones.analytics.colos(zone['id'], params={'since': -1})
         except CloudFlare.exceptions.CloudFlareAPIError as exception:
-            if int(exception) == 10_000:
-                # Authentication error on this zone. We continue for others zones
-                continue
-            raise exception
+            error_message = f'Error getting analytics for zone={zone}, error = {exception}'
+            logging.error(error_message)
+            continue
+
         yield zone['name'], series
 
 
@@ -210,16 +210,22 @@ def _get_cloudflare_metrics_from_logs(token, logs_count, logs_sample, logs_range
     end = int(past_1minute.timestamp())
     start = end - logs_range
     for zone in cloudflare.zones.get():
-        series = cloudflare.zones.logs.received(zone['id'],
-                                                params={'end': end,
-                                                        'start': start,
-                                                        'fields': 'CacheTieredFill,ClientCountry,'
-                                                                  'EdgeColoCode,ConnectTimestamp,'
-                                                                  'OriginIP,'
-                                                                  'OriginResponseTime',
-                                                        'count': logs_count,
-                                                        'sample': logs_sample
-                                                        })
+        try:
+            series = cloudflare.zones.logs.received(zone['id'],
+                                                    params={'end': end,
+                                                            'start': start,
+                                                            'fields': 'CacheTieredFill,ClientCountry,'
+                                                                      'EdgeColoCode,ConnectTimestamp,'
+                                                                      'OriginIP,'
+                                                                      'OriginResponseTime',
+                                                            'count': logs_count,
+                                                            'sample': logs_sample
+                                                            })
+        except CloudFlare.exceptions.CloudFlareAPIError as exception:
+            error_message = f'Error getting log for zone={zone}, error = {exception}'
+            logging.error(error_message)
+            continue
+
         if not isinstance(series, list):
             # cloudflare.zones.logs.received don't raise any error on authentification failure
             # but answer {'success': False, 'errors': [{'code': 10000, 'message': 'Authentication error'}]}
